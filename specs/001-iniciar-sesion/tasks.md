@@ -1,0 +1,31 @@
+# Tareas — Spec 001: Iniciar y controlar una sesión de estudio
+
+Spec: `specs/001-iniciar-sesion/spec.md` (Aprobada) · Plan: `specs/001-iniciar-sesion/plan.md`
+9 tareas en orden de dependencia. Las de lógica se cierran con `npx jest` en verde;
+las de interfaz, con puntos concretos de la lista manual de `rn-conventions` en Expo Go.
+
+- [x] **T1. Configurar Jest (preset `jest-expo`) y crear `src/domain/timer.ts` con los tipos, `DEFAULT_STUDY_DURATION_MS` y `createInitialTimerState`.** RF-1, RNF-1 — *Hecho: cubre RF-1 (estado inicial 25 min detenido) y RNF-1 (cero dependencias nuevas: solo bloque `jest` y script `test` en `package.json`).*
+  - Hecho cuando: `npx jest` ejecuta el runner TypeScript+Expo en verde con el test de estado inicial (`idle`, `durationMs` = 25 min, `endTimestampMs` = `null`) y `package.json` no añade dependencias nuevas (solo bloque `jest` y script `test`).
+
+- [x] **T2. Valores que se pintan: `getRemainingMs`, `formatMmSs` y `getPrimaryButtonLabel`.** RF-2, RF-5, RF-6, RF-11 — *Hecho: cubre RF-2 (mm:ss con dos dígitos), RF-5 (restante exacto tras 10 min sin ticks → 15:00), RF-6 (clavado en 00:00, jamás negativo) y RF-11 («Pausar»/«Reanudar»/«Iniciar»); 8 pruebas nuevas en verde.*
+  - Hecho cuando: `npx jest` en verde con: restante exacto de 15:00 tras 10 min sin ningún tick (RF-5); `formatMmSs` → `25:00`, `05:01`, `00:09`, `00:00` para 0 o negativo, siempre dos dígitos; etiquetas «Pausar»/«Reanudar»/«Iniciar» según estado.
+
+- [x] **T3. Transiciones `start` y `pause`.** RF-1, RF-3, RF-4 — *Hecho: cubre RF-1 (arranque desde idle con `endTimestampMs = ahora + 25 min`), RF-3 (pausa congela el restante exacto) y RF-4 (reanudación desde el congelado); 6 pruebas nuevas en verde.*
+  - Hecho cuando: `npx jest` en verde con: `start` desde `idle` fija `endTimestampMs = ahora + 25 min` y el restante desciende de forma exacta; `pause` congela `endTimestampMs − ahora` en el instante preciso; `start` desde `paused` continúa desde el congelado (no desde el inicio); `start` sobre `running` es no-op.
+
+- [x] **T4. Fin de ronda: `tick`, estado `finished` y `start` desde `finished`.** RF-6, RF-7 — *Hecho: cubre RF-6 (al vencer pasa a `finished` y clava en 00:00 sin negativos, incluso si venía vencido hace rato) y RF-7 («Iniciar» en 00:00 arranca nueva ronda al tiempo inicial); 6 pruebas nuevas en verde (una de `start`/`finished` ya cubierta en T3).*
+  - Hecho cuando: `npx jest` en verde con: `tick` con `ahora ≥ endTimestampMs` → `finished`, restante 0 jamás negativo; `pause` en 00:00 no cambia nada; `start` desde `finished` arranca nueva ronda al tiempo inicial.
+
+- [x] **T5. Reinicio: `confirmReset` y `cancelReset`.** RF-8, RF-9, RF-10, RF-12 — *Hecho: cubre RF-9 (confirmar con restante > 0 → `idle` detenido, corriendo y pausado), RF-12 (confirmar en 00:00 → nueva ronda sola), RF-10 (`cancelReset` devuelve el mismo estado por identidad) y RF-8 a nivel de lógica (la cuenta sigue su marcha durante el diálogo: cancelar no congela nada); 8 pruebas nuevas en verde.*
+  - Hecho cuando: `npx jest` en verde con: `confirmReset` con restante > 0 (corriendo y pausado) → `idle` al tiempo inicial detenido; `confirmReset` con restante 0 → nueva ronda corriendo automáticamente; `cancelReset` devuelve el mismo estado (identidad) y el restante con un `ahora` posterior ya avanzó (la cuenta siguió durante el diálogo).
+
+- [x] **T6. Paleta `src/theme/colors.ts` y layout raíz `app/_layout.tsx`.** RNF-2
+  - Hecho cuando: en Expo Go se cumplen los puntos de lista «Los textos y el reloj se leen perfectamente, respetando los contrastes de la skill `cotopaxi-brand`» y «Se ve bien en vertical y los elementos no se desbordan en pantallas pequeñas», con fondo Blanco `#FFFFFF`, Azul Marino `#1B1D5D` para texto/principal y Dorado `#C89B1E` solo en acentos; ningún color fuera de `src/theme/colors.ts`.
+
+- [x] **T7. Pantalla principal `app/index.tsx`: `useReducer` delegando en el dominio, cuenta regresiva mm:ss, botón alterno y refresco (intervalo 250 ms + `AppState`).** RF-1, RF-2, RF-3, RF-4, RF-5, RF-6, RF-7, RF-11 — *Hecho: verificado por el usuario en Expo Go (Escenarios 1 y 2 de HU-001 + RF-5 con bloqueo de pantalla + puntos de lista de `rn-conventions`); cubre RF-1/RF-3/RF-4 (iniciar, pausar, reanudar), RF-2 (mm:ss permanente), RF-5 (refresco por timestamp + `AppState`), RF-6/RF-7 en pantalla (clavado y nuevo arranque) y RF-11 (solo reloj + botón alterno, `tabular-nums`, `accessibilityLabel`, textos en español).*
+  - Hecho cuando: en Expo Go pasan los escenarios 1 y 2 de HU-001 («Iniciar» muestra 25:00 y descuenta; «Pausar» congela y «Reanudar» continúa desde ese punto) y los puntos de lista «Se ve bien en vertical…» y «Los textos y el reloj se leen perfectamente…»; el reloj usa `fontVariant: ['tabular-nums']`, los botones tienen `accessibilityLabel` y todos los textos visibles están en español; con la pantalla bloqueada 1–2 min, al volver el contador muestra el valor exacto (RF-5).
+
+- [x] **T8. Botón «Reiniciar» con diálogo nativo `Alert.alert` (Cancelar / Reiniciar).** RF-8, RF-9, RF-10, RF-11, RF-12 — *Hecho: verificado por el usuario en Expo Go (Escenarios 3 y 4 de HU-001 + RF-12); cubre RF-8 (diálogo nativo sin detener la cuenta), RF-9 (confirmar → 25:00 detenido), RF-10 (cancelar sin ningún cambio), RF-11 (botón «Reiniciar» con `accessibilityLabel`) y RF-12 (confirmar en 00:00 → ronda nueva sola).*
+  - Hecho cuando: en Expo Go pasan los escenarios 3 y 4 de HU-001: con la cuenta corriendo, abrir el diálogo no la detiene (sigue descontando detrás), «Cancelar» conserva el tiempo y «Reiniciar» vuelve a 25:00 detenido; con el contador en 00:00, «Reiniciar» arranca una ronda nueva automáticamente; el diálogo es el nativo del sistema (regla de acción crítica de `rn-conventions`) y «Reiniciar» tiene `accessibilityLabel`.
+
+- [x] **T9. Verificación final de la spec.** RF-1 a RF-12, RNF-1, RNF-2 — *Hecho: `npx jest` 30/30 y `npx tsc --noEmit` en verde; RNF-1 sin dependencias nuevas (24 deps / 9 devDeps de inicio) y RNF-2 sin colores fuera de `src/theme/colors.ts`; los cuatro escenarios de HU-001 + RF-5 (bloqueo) + RF-6/RF-7 (00:00) verificados por el usuario en Expo Go; puntos no aplicables de `rn-conventions` apuntados (teclado/ajustes: sin campos; «conserva el estado de la sesión»: descartado por Decisión 3) y `MEMORY.md` actualizado.*
